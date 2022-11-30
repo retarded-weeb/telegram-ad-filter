@@ -6,7 +6,7 @@
 // @author      VChet
 // @icon        https://web.telegram.org/favicon.ico
 // @namespace   Telegram-Ad-Filter
-// @match       https://web.telegram.org/k/*
+// @match       https://web.telegram.org/*
 // @grant       GM_addStyle
 // @updateURL   https://raw.githubusercontent.com/VChet/Telegram-Ad-Filter/master/tg-ad-filter.user.js
 // @downloadURL https://raw.githubusercontent.com/VChet/Telegram-Ad-Filter/master/tg-ad-filter.user.js
@@ -16,7 +16,9 @@
 (async () => {
   GM_addStyle(`
     .bubble:not(.has-advertisement) .advertisement,
-    .bubble.has-advertisement .bubble-content *:not(.advertisement) {
+    .bubble.has-advertisement .bubble-content *:not(.advertisement),
+    .message-content-wrapper:not(.has-advertisement) .advertisement,
+    .message-content-wrapper.has-advertisement .bubble-content *:not(.advertisement) {
       display: none;
     }
     .advertisement {
@@ -29,6 +31,20 @@
     }
   `);
 
+  const classMap = {
+    "/k/": {
+      wrapper: "bubble",
+      content: "bubble-content",
+      message: "message",
+    },
+    "/z/": {
+      wrapper: "message-content-wrapper",
+      content: "message-content",
+      message: "message-content",
+    },
+  };
+  const classes = classMap[window.location.pathname];
+
   let adWords = [];
   function fetchWords() {
     return fetch("https://raw.githubusercontent.com/VChet/Telegram-Ad-Filter/master/blacklist.json")
@@ -37,7 +53,7 @@
   }
 
   function applyStyles(node) {
-    const message = node.querySelector(".message");
+    const message = node.querySelector(`.${classes.message}`);
     if (!message?.innerText) return;
     const hasAdWord = adWords.some((filter) => message.innerText.toLowerCase().includes(filter.toLowerCase()));
     if (!hasAdWord || node.querySelector(".advertisement")) return;
@@ -45,7 +61,7 @@
     const trigger = document.createElement("div");
     trigger.classList.add("advertisement");
     trigger.innerText = "Advertisement";
-    node.querySelector(".bubble-content").prepend(trigger);
+    node.querySelector(`.${classes.content}`).prepend(trigger);
 
     node.classList.add("has-advertisement");
     trigger.addEventListener("click", () => { node.classList.remove("has-advertisement"); });
@@ -60,7 +76,7 @@
       case 1: // Element
       case 9: // Document
       case 11: // Document fragment
-        if (node.classList?.contains("bubble")) { applyStyles(node); }
+        if (node.classList?.contains(classes.wrapper)) { applyStyles(node); }
         child = node.firstChild;
         while (child) {
           next = child.nextSibling;
